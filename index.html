@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cavora Test</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:#05080f;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
+  #scene{position:fixed;inset:0;display:block}
+  .overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;text-align:center;padding:1rem}
+  .overlay h1{
+    color:#eaf2ff;font-size:clamp(2.2rem,8vw,5rem);font-weight:800;letter-spacing:.04em;
+    text-shadow:0 0 30px rgba(80,150,255,.55);
+    opacity:0;transform:translateY(18px);animation:rise 1.1s .3s cubic-bezier(.22,1,.36,1) forwards
+  }
+  .overlay p{
+    color:#7f93b8;margin-top:.75rem;font-size:clamp(.85rem,2.5vw,1.05rem);letter-spacing:.18em;text-transform:uppercase;
+    opacity:0;animation:fade 1s .8s ease forwards
+  }
+  @keyframes rise{to{opacity:1;transform:none}}
+  @keyframes fade{to{opacity:1}}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="overlay">
+  <h1>Cavora Test</h1>
+  <p>3D · Three.js</p>
+</div>
+
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+const canvas = document.getElementById('scene');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x05080f, 6, 14);
+
+const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100);
+camera.position.set(0, 0, 8); // Start weiter weg für sanften Anflug
+
+// Beleuchtung
+scene.add(new THREE.AmbientLight(0x4060a0, 0.7));
+const key = new THREE.DirectionalLight(0xffffff, 1.4);
+key.position.set(4, 6, 5);
+scene.add(key);
+const rim = new THREE.PointLight(0x3a7bff, 2.2, 20);
+rim.position.set(-5, -2, 3);
+scene.add(rim);
+
+// Blauer Würfel
+const cube = new THREE.Mesh(
+  new THREE.BoxGeometry(2, 2, 2),
+  new THREE.MeshStandardMaterial({ color:0x2f6bff, metalness:0.35, roughness:0.25, emissive:0x0a1f55, emissiveIntensity:0.6 })
+);
+scene.add(cube);
+
+// Dezenter Wireframe-Glow
+const wire = new THREE.LineSegments(
+  new THREE.EdgesGeometry(cube.geometry),
+  new THREE.LineBasicMaterial({ color:0x9fc4ff, transparent:true, opacity:0.5 })
+);
+cube.add(wire);
+
+// Kamera-Anflug (easeInOutCubic)
+const easeInOutCubic = t => t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2;
+const startZ = 8, endZ = 5, flyDur = 1.6;
+const clock = new THREE.Clock();
+
+function resize(){
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w || canvas.height !== h){
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+}
+new ResizeObserver(resize).observe(canvas);
+resize();
+
+function animate(){
+  const dt = clock.getDelta();
+  const t = clock.elapsedTime;
+  if (t < flyDur) camera.position.z = startZ + (endZ - startZ) * easeInOutCubic(t / flyDur);
+  cube.rotation.x += dt * 0.5;
+  cube.rotation.y += dt * 0.7;
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+renderer.render(scene, camera); // Erstes Frame sofort
+animate();
+</script>
+</body>
+</html>
